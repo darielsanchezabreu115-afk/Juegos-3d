@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ISLA AURORA — Aventura 3D</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@400;600;800&display=swap');
+:root{--cyan:#65f5ff;--gold:#ffd477;--panel:rgba(6,17,30,.88)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#06101c;color:#eafaff;font-family:Inter,Arial}
+canvas{display:block}#ui{position:fixed;inset:0;pointer-events:none}
+#brand{position:absolute;top:18px;left:22px;font:800 18px Orbitron;letter-spacing:3px;color:var(--cyan);text-shadow:0 0 18px #31d9ff}
+#stats{position:absolute;top:55px;left:22px;font-size:12px;letter-spacing:1px;color:#c8e9f3}
+#objective{position:absolute;top:20px;right:22px;background:var(--panel);border:1px solid #4bd8e855;border-radius:12px;padding:13px 16px;max-width:270px;font-size:13px;line-height:1.5}
+#objective b{color:var(--gold);font:600 11px Orbitron;letter-spacing:1px}
+#cross{position:absolute;left:50%;top:50%;width:10px;height:10px;border:1px solid #b9faff;border-radius:50%;transform:translate(-50%,-50%);opacity:.65}
+#prompt{position:absolute;bottom:115px;left:50%;transform:translateX(-50%);background:#061522dd;border:1px solid #65f5ff88;border-radius:9px;padding:10px 16px;font-size:13px;display:none}
+#bottom{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:11px;color:#c8e5ef;background:#071522aa;padding:9px 15px;border-radius:20px;white-space:nowrap}
+#toast{position:absolute;top:25%;left:50%;transform:translate(-50%,-50%);font:600 15px Orbitron;color:var(--gold);text-shadow:0 2px 12px #000;opacity:0;transition:opacity .3s;text-align:center}
+#menu,#pause,#settings,#complete{pointer-events:auto;position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(130deg,rgba(3,12,24,.94),rgba(4,24,38,.82));backdrop-filter:blur(9px);z-index:5}
+.card{width:min(510px,92vw);padding:34px;border:1px solid #64eaff55;border-radius:20px;background:linear-gradient(145deg,#0c2234ee,#071321f2);box-shadow:0 25px 90px #0009;text-align:center}
+h1{font:800 clamp(27px,6vw,43px) Orbitron;letter-spacing:4px;color:var(--cyan);margin:0 0 8px;text-shadow:0 0 28px #2adfff66}
+.sub{color:#b3d5e1;font-size:13px;line-height:1.65;margin:0 auto 24px;max-width:390px}
+button{display:block;width:100%;padding:14px;margin:9px 0;border:1px solid #63eaff88;border-radius:10px;background:linear-gradient(90deg,#0c5265,#123a56);color:#f1fdff;font:600 12px Orbitron;letter-spacing:1.5px;cursor:pointer;transition:.2s}
+button:hover{background:linear-gradient(90deg,#137d91,#1b5576);transform:translateY(-1px)}
+button.secondary{background:#13283a;border-color:#ffffff22}
+label{display:flex;justify-content:space-between;align-items:center;margin:17px 0;color:#d5edf4;font-size:13px}
+input[type=range]{width:55%;accent-color:#54e8f5}
+.hidden{display:none!important}
+#touch{position:fixed;inset:0;pointer-events:none;z-index:3;display:none}
+.pad{position:absolute;bottom:35px;left:22px;width:120px;height:120px;border-radius:50%;border:1px solid #a4f6ff66;background:#071b2b88;pointer-events:auto;touch-action:none}
+#stick{position:absolute;width:48px;height:48px;left:35px;top:35px;border-radius:50%;background:#67e9f588;border:1px solid #d5ffff}
+.touchbtn{position:absolute;right:22px;bottom:42px;width:68px;height:68px;border-radius:50%;pointer-events:auto;touch-action:none;background:#0b4b60cc;border:1px solid #9af8ff;color:white;font:10px Orbitron}
+#jump{right:98px;bottom:110px;width:54px;height:54px}#interact{right:20px;bottom:125px}
+#lookhint{position:absolute;right:20px;bottom:18px;color:#a9d4e0;font-size:10px}
+@media(max-width:700px){#touch{display:block}#bottom{bottom:10px;font-size:9px}#objective{max-width:190px;font-size:11px;top:12px;right:10px}#brand{left:12px;font-size:14px}#stats{left:12px;top:42px;font-size:10px}}
+</style>
+</head>
+<body>
+<div id="ui">
+ <div id="brand">ISLA AURORA</div><div id="stats">ENERGÍA <span id="energy">0</span>/5 · EXPLORACIÓN</div>
+ <div id="objective"><b>OBJETIVO PRINCIPAL</b><br><span id="objtext">Encuentra los 5 cristales de energía para activar el faro.</span></div>
+ <div id="cross"></div><div id="prompt">E — INTERACTUAR</div><div id="toast"></div>
+ <div id="bottom">WASD MOVER · ESPACIO SALTAR · E INTERACTUAR · V CÁMARA · ESC PAUSA</div>
+</div>
+<div id="touch"><div class="pad" id="pad"><div id="stick"></div></div><button class="touchbtn" id="jump">SALTAR</button><button class="touchbtn" id="interact">USAR</button><div id="lookhint">Desliza el lado derecho para mirar</div></div>
+<div id="menu"><div class="card"><h1>ISLA AURORA</h1><p class="sub">Una aventura de exploración en una isla suspendida entre nubes. Recupera los cristales, ayuda a los habitantes y despierta el antiguo faro.</p><button id="start">COMENZAR AVENTURA</button><button class="secondary" id="continue">CONTINUAR PARTIDA</button><button class="secondary" id="openSettings">CONFIGURACIÓN</button><p class="sub" style="font-size:10px;margin:18px 0 0">Experiencia 3D · Guardado automático · Audio procedural</p></div></div>
+<div id="pause" class="hidden"><div class="card"><h1>PAUSA</h1><p class="sub">La isla te espera.</p><button id="resume">CONTINUAR</button><button class="secondary" id="pauseSettings">CONFIGURACIÓN</button><button class="secondary" id="saveExit">GUARDAR Y SALIR AL MENÚ</button></div></div>
+<div id="settings" class="hidden"><div class="card"><h1>AJUSTES</h1><label>Calidad gráfica <select id="quality" style="background:#102b3c;color:white;padding:7px;border:1px solid #5ceaff66;border-radius:6px"><option value="high">Alta</option><option value="medium">Media</option><option value="low">Baja</option></select></label><label>Volumen <input id="volume" type="range" min="0" max="1" step=".05" value=".45"></label><label>Sensibilidad <input id="sens" type="range" min=".5" max="2" step=".1" value="1"></label><button id="settingsBack">VOLVER</button></div></div>
+<div id="complete" class="hidden"><div class="card"><h1>FARO ACTIVADO</h1><p class="sub">La luz de Aurora vuelve a recorrer el archipiélago. Has restaurado la energía de la isla y ayudado a sus habitantes. ¡Aventura completada!</p><button id="again">VOLVER A EXPLORAR</button><button class="secondary" id="completeMenu">MENÚ PRINCIPAL</button></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/ rapier.es.js'.replace(' ','');
+const $=id=>document.getElementById(id);
+let scene,camera,renderer,world,playerBody,playerCollider,clock=new THREE.Clock(),running=false,started=false;
+let player,visualRoot,interactables=[],crystals=[],npcs=[],particles=[],keys={},joy={x:0,y:0},yaw=0,pitch=-.18,third=true,energy=0,near=null,audioCtx=null,master=null,volume=.45,sensitivity=1;
+let cameraTarget=new THREE.Vector3(),cameraPos=new THREE.Vector3(),lastSave=0,quality='high',jumpQueued=false,interactQueued=false,completed=false;
+const tmp=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
+const mat=(color,rough=.8,metal=0,em=0)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive:color,emissiveIntensity:em});
+function box(parent,x,y,z,sx,sy,sz,material,cast=true){let m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),material);m.position.set(x,y,z);m.castShadow=cast;m.receiveShadow=true;parent.add(m);return m}
+function sphere(parent,x,y,z,r,material,segments=16){let m=new THREE.Mesh(new THREE.SphereGeometry(r,segments,Math.max(8,segments/2)),material);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m}
+function cylinder(parent,x,y,z,rt,rb,h,material,seg=12){let m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),material);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m}
+function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').style.opacity=0,2200)}
+function show(id){['menu','pause','settings','complete'].forEach(x=>$(x).classList.add('hidden'));if(id)$(id).classList.remove('hidden')}
+function sound(freq=440,dur=.12,type='sine',gain=.08){try{if(!audioCtx){audioCtx=new AudioContext();master=audioCtx.createGain();master.gain.value=volume;master.connect(audioCtx.destination)}let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(freq,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(50,freq*.65),audioCtx.currentTime+dur);g.gain.setValueAtTime(gain,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);o.connect(g);g.connect(master);o.start();o.stop(audioCtx.currentTime+dur)}catch(e){}}
+function makeHumanoid(){
+ let root=new THREE.Group();visualRoot=new THREE.Group();root.add(visualRoot);
+ const skin=mat(0xd9a77d),shirt=mat(0x167b91),pants=mat(0x253b55),dark=mat(0x102333),glow=mat(0x65f5ff,.3,.2,1.2);
+ // Jointed procedural character: torso, head, upper/lower limbs pivot at anatomical joints.
+ let torso=new THREE.Group();torso.position.y=1.18;visualRoot.add(torso);
+ box(torso,0,0,0,.55,.72,.3,shirt);sphere(torso,0,.52,0,.22,skin);sphere(torso,0,.62,.015,.225,skin);
+ // hair and face
+ sphere(torso,0,.73,-.015,.22,mat(0x25303b));box(torso,0,.55,.205,.12,.035,.018,mat(0x17212b),false);
+ let limbs=[];
+ for(let side of [-1,1]){
+  let arm=new THREE.Group();arm.position.set(side*.36,.25,0);torso.add(arm);cylinder(arm,0,-.23,0,.095,.105,.48,shirt);sphere(arm,0,-.49,0,.095,skin);limbs.push({pivot:arm,kind:'arm',side});
+  let leg=new THREE.Group();leg.position.set(side*.16,-.35,0);torso.add(leg);cylinder(leg,0,-.25,0,.115,.12,.5,pants);sphere(leg,0,-.53,.06,.13,dark);limbs.push({pivot:leg,kind:'leg',side});
+ }
+ // backpack
+ box(torso,0,-.02,-.22,.34,.43,.16,dark);
+ sphere(torso,0,.05,-.32,.1,glow);
+ root.userData={torso,limbs};return root;
+}
+function createIsland(){
+ const grass=mat(0x3b9a79),earth=mat(0x354f55),rock=mat(0x526875),sand=mat(0xb8a879),wood=mat(0x75543a),leaf=mat(0x267d61),white=mat(0xdceef1),gold=mat(0xffd477,.35,.3,.25);
+ // Main floating landmass
+ let ground=new THREE.Mesh(new THREE.CylinderGeometry(19,15,5,48,3),earth);ground.position.y=-2.7;ground.receiveShadow=true;ground.castShadow=true;scene.add(ground);
+ let top=new THREE.Mesh(new THREE.CylinderGeometry(19,18.5,.7,48),grass);top.position.y=-.15;top.receiveShadow=true;scene.add(top);
+ // layered underside rocks
+ for(let i=0;i<22;i++){let a=i/22*Math.PI*2,r=14+Math.random()*3;let m=new THREE.Mesh(new THREE.ConeGeometry(1.1+Math.random()*1.2,3+Math.random()*4,6),rock);m.position.set(Math.cos(a)*r,-5-Math.random()*1.3,Math.sin(a)*r);m.rotation.z=(Math.random()-.5)*.4;scene.add(m)}
+ // paths
+ let pathmat=mat(0x9b9b79);let path=new THREE.Mesh(new THREE.RingGeometry(4.4,5.8,48),pathmat);path.rotation.x=-Math.PI/2;path.position.y=.22;scene.add(path);
+ // Lighthouse platform + lighthouse
+ cylinder(scene,0,.12,-11,4.5,4.8,.35,rock,32);
+ cylinder(scene,0,2,-11,1.05,1.35,3.8,white,16);
+ cylinder(scene,0,4.05,-11,1.25,1.25,.35,gold,16);
+ let lamp=sphere(scene,0,4.45,-11,.43,mat(0xffe8a1,.2,.1,2));lamp.userData.lamp=true;
+ for(let i=0;i<4;i++){let w=box(scene,0,2.1,-11+(.0),.14,2.5,.1,mat(0x2d6e7d));w.position.x=(i%2?-.52:.52);w.rotation.y=i*Math.PI/2}
+ // huts
+ for(let [x,z] of [[8,-3],[-9,4],[7,8]]){box(scene,x,.8,z,3,1.6,2.6,wood);let roof=new THREE.Mesh(new THREE.ConeGeometry(2.4,1.3,4),mat(0x9a6548));roof.position.set(x,2.25,z);roof.rotation.y=Math.PI/4;scene.add(roof);box(scene,x,.5,z+1.32,.65,1,.08,dark)}
+ // trees, shrubs, rocks
+ for(let i=0;i<34;i++){let a=Math.random()*Math.PI*2,r=6+Math.random()*11,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.hypot(x,z)<6.3)continue;let h=1.3+Math.random()*1.3;cylinder(scene,x,h/2,z,.18,.28,h,wood,7);for(let j=0;j<3;j++)sphere(scene,x+(Math.random()-.5)*.5,h*.65+j*.25,z+(Math.random()-.5)*.5,.65-j*.08,leaf,9)}
+ for(let i=0;i<32;i++){let a=Math.random()*6.28,r=5+Math.random()*13,x=Math.cos(a)*r,z=Math.sin(a)*r;sphere(scene,x,.15,z,.35+Math.random()*.35,leaf,8)}
+ // floating rocks and small satellite islets
+ for(let i=0;i<8;i++){let a=i/8*6.28,r=23+Math.random()*5,x=Math.cos(a)*r,z=Math.sin(a)*r;let island=new THREE.Mesh(new THREE.CylinderGeometry(3,1.2,2.4,9),earth);island.position.set(x,-3,z);scene.add(island);let cap=new THREE.Mesh(new THREE.CylinderGeometry(3,3,.3,9),grass);cap.position.set(x,-1.65,z);scene.add(cap);for(let j=0;j<3;j++)sphere(scene,x+(Math.random()-.5)*3,-1,z+(Math.random()-.5)*3,.7,leaf,8)}
+ // decorative bridges
+ for(let a of [Math.PI/4,Math.PI*1.25]){let x=Math.cos(a)*16,z=Math.sin(a)*16;let plank=box(scene,x,.1,z,5,.22,1.5,wood);plank.rotation.y=-a}
+}
+function createWorldObjects(){
+ const crystalMat=mat(0x64f4ff,.2,.2,1.8),orbMat=mat(0xffd477,.2,.3,1.4);
+ const spots=[[-11,.9,-7],[10,.9,-8],[12,.9,7],[-10,.9,10],[2,.9,14]];
+ spots.forEach((p,i)=>{let g=new THREE.Group();g.position.set(...p);let c=new THREE.Mesh(new THREE.OctahedronGeometry(.58,1),crystalMat);c.castShadow=true;g.add(c);let ring=new THREE.Mesh(new THREE.TorusGeometry(.8,.035,8,28),orbMat);ring.rotation.x=Math.PI/2;g.add(ring);scene.add(g);crystals.push({group:g,got:false,baseY:p[1],phase:i});interactables.push({obj:g,type:'crystal',data:crystals.at(-1),label:'Recoger cristal de energía'})});
+ // Interactive ancient console
+ let consoleGroup=new THREE.Group();consoleGroup.position.set(0,.35,-5);cylinder(consoleGroup,0,.4,0,.8,.95,.8,rock);let orb=sphere(consoleGroup,0,1.15,0,.35,orbMat);scene.add(consoleGroup);
+ interactables.push({obj:consoleGroup,type:'console',label:'Examinar el mapa antiguo'});
+ // Friendly helper robots
+ for(let i=0;i<3;i++){let x=[7,-7,2][i],z=[2,7,5][i];let g=new THREE.Group();g.position.set(x,.6,z);sphere(g,0,0,0,.48,mat(0x557c8e));box(g,0,-.48,0,.62,.18,.5,mat(0x294657));sphere(g,0,.12,.43,.16,mat(0x7cf6ff,.2,.1,1.5));for(let s of [-1,1])cylinder(g,s*.5,-.35,0,.08,.1,.38,mat(0x9ab7c0));scene.add(g);npcs.push({group:g,base:new THREE.Vector3(x,.6,z),phase:i,label:['Luma','Pico','Nube'][i]});interactables.push({obj:g,type:'npc',data:npcs.at(-1),label:'Hablar con robot amistoso'})}
+}
+function makeParticles(pos,color=0x6af5ff,count=18){for(let i=0;i<count;i++){let m=new THREE.Mesh(new THREE.SphereGeometry(.045,6,6),new THREE.MeshBasicMaterial({color,transparent:true}));m.position.copy(pos);scene.add(m);particles.push({mesh:m,vel:new THREE.Vector3((Math.random()-.5)*3,Math.random()*3,(Math.random()-.5)*3),life:.7+Math.random()*.6})}}
+async function init(){
+ await RAPIER.init();
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x8ac6db);scene.fog=new THREE.Fog(0x8ac6db,35,85);
+ camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,150);
+ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?1.7:quality==='medium'?1.25:1));renderer.shadowMap.enabled=quality!=='low';renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xc9efff,0x456052,2));
+ let sun=new THREE.DirectionalLight(0xffe4b5,2.4);sun.position.set(-15,25,12);sun.castShadow=true;sun.shadow.mapSize.set(quality==='high'?2048:1024,quality==='high'?2048:1024);sun.shadow.camera.left=-30;sun.shadow.camera.right=30;sun.shadow.camera.top=30;sun.shadow.camera.bottom=-30;scene.add(sun);
+ createIsland();createWorldObjects();
+ // Clouds
+ for(let i=0;i<22;i++){let g=new THREE.Group(),x=(Math.random()-.5)*75,z=(Math.random()-.5)*75,y=8+Math.random()*13;for(let j=0;j<5;j++)sphere(g,(Math.random()-.5)*2,j*.15,(Math.random()-.5)*2,1.1+Math.random()*.7,mat(0xe8f7f8),9);g.position.set(x,y,z);scene.add(g)}
+ // Physics world
+ world=new RAPIER.World({x:0,y:-19.5,z:0});world.integrationParameters.dt=1/60;
+ let floor=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.55,0));world.createCollider(RAPIER.ColliderDesc.cuboid(18,.35,18),floor);
+ playerBody=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,2,1).setLinearDamping(.7).setAngularDamping(1).lockRotations());playerCollider=world.createCollider(RAPIER.ColliderDesc.capsule(.48,.34).setFriction(.8).setRestitution(0),playerBody);
+ player=makeHumanoid();scene.add(player);
+ loadSave(false);setupInput();window.addEventListener('resize',resize);running=true;animate();
+}
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function setupInput(){
+ window.addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Escape'){if(started)pauseGame()}if(e.code==='KeyV'&&started){third=!third;toast(third?'Cámara tercera persona':'Cámara primera persona')}if(e.code==='KeyE')interactQueued=true;if(e.code==='Space')jumpQueued=true});
+ window.addEventListener('keyup',e=>keys[e.code]=false);
+ renderer.domElement.addEventListener('click',()=>{if(started&&!('ontouchstart'in window))renderer.domElement.requestPointerLock?.()});
+ document.addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement&&started){yaw-=e.movementX*.002*sensitivity;pitch=Math.max(-.65,Math.min(.55,pitch-e.movementY*.002*sensitivity))}});
+ let pad=$('pad'),stick=$('stick'),active=false,rect;
+ pad.addEventListener('pointerdown',e=>{active=true;pad.setPointerCapture(e.pointerId);rect=pad.getBoundingClientRect();moveStick(e)});
+ pad.addEventListener('pointermove',e=>{if(active)moveStick(e)});
+ pad.addEventListener('pointerup',()=>{active=false;joy.x=joy.y=0;stick.style.transform='translate(0,0)'});
+ function moveStick(e){let dx=e.clientX-(rect.left+60),dy=e.clientY-(rect.top+60),l=Math.hypot(dx,dy),k=Math.min(1,45/(l||1));joy.x=dx*k/45;joy.y=dy*k/45;stick.style.transform=`translate(${joy.x*38}px,${joy.y*38}px)`}
+ $('jump').addEventListener('pointerdown',()=>jumpQueued=true);$('interact').addEventListener('pointerdown',()=>interactQueued=true);
+ let look=null;renderer.domElement.addEventListener('pointerdown',e=>{if(e.clientX>innerWidth*.48&&'ontouchstart'in window)look={x:e.clientX,y:e.clientY}});renderer.domElement.addEventListener('pointermove',e=>{if(look){yaw-=(e.clientX-look.x)*.006*sensitivity;pitch=Math.max(-.65,Math.min(.55,pitch-(e.clientY-look.y)*.004*sensitivity));look={x:e.clientX,y:e.clientY}}});renderer.domElement.addEventListener('pointerup',()=>look=null);
+}
+function groundCheck(){let p=playerBody.translation();let ray=new RAPIER.Ray({x:p.x,y:p.y-.35,z:p.z},{x:0,y:-1,z:0});let hit=world.castRay(ray,.32,true);return !!hit}
+function interact(){
+ if(!near)return;
+ if(near.type==='crystal'){let d=near.data;if(d.got)return;d.got=true;d.group.visible=false;energy++;$('energy').textContent=energy;makeParticles(d.group.position,0x66f5ff,30);sound(680,.35,'sine',.13);toast(`CRISTAL RECUPERADO · ${energy}/5`);$('objtext').textContent=energy<5?`Cristales recuperados: ${energy}/5. Sigue explorando.`:'Lleva los cristales al faro y activa su núcleo.';saveGame();if(energy===5)toast('¡Todos los cristales! Ve al faro.')}
+ else if(near.type==='console'){toast('Mapa antiguo: el faro está al norte. Los cristales brillan cerca de los árboles.');sound(330,.2)}
+ else if(near.type==='npc'){let n=near.data;let lines={Luma:'¡Hola, explorador! Los cristales mantienen flotando nuestra isla.',Pico:'He visto un brillo azul cerca del puente del este.',Nube:'Cuando tengas los cinco cristales, visita el faro del norte.'};toast(lines[n.label]);sound(520,.18)}
+}
+function updatePlayer(dt){
+ let p=playerBody.translation(),forward=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+ let x=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x,z=(keys.KeyS?1:0)-(keys.KeyW?1:0)+joy.y;let dir=right.multiplyScalar(x).add(forward.multiplyScalar(-z));if(dir.length()>1)dir.normalize();
+ let vel=playerBody.linvel(),speed=keys.ShiftLeft?7.2:5.2;
+ playerBody.setLinvel({x:dir.x*speed,y:vel.y,z:dir.z*speed},true);
+ if(jumpQueued&&groundCheck()){playerBody.applyImpulse({x:0,y:7.3,z:0},true);sound(180,.1,'triangle',.05)}jumpQueued=false;
+ player.position.set(p.x,p.y-.9,p.z);player.rotation.y=yaw;
+ let moving=dir.length()>.1,time=clock.elapsedTime;
+ player.userData.torso.rotation.z=moving?Math.sin(time*10)*.08:0;
+ player.userData.limbs.forEach(l=>{let swing=moving?Math.sin(time*10+(l.side===1?Math.PI:0))*.65:0;l.pivot.rotation.x=l.kind==='leg'?swing:swing*.7});
+ if(p.y<-10){playerBody.setTranslation({x:0,y:3,z:1},true);playerBody.setLinvel({x:0,y:0,z:0},true);toast('Has regresado a un lugar seguro.')}
+ // Camera follows
+ let head=new THREE.Vector3(p.x,p.y+.35,p.z);cameraTarget.copy(head);
+ if(third){let offset=new THREE.Vector3(Math.sin(yaw)*5,2.1+pitch*2,Math.cos(yaw)*5);cameraPos.copy(head).add(offset);camera.position.lerp(cameraPos,1-Math.pow(.001,dt));camera.lookAt(head.x,head.y+.35,head.z)}
+ else{camera.position.lerp(head,1-Math.pow(.001,dt));camera.position.y+=.28;camera.lookAt(head.x-Math.sin(yaw)*10,head.y+.28+pitch*5,head.z-Math.cos(yaw)*10)}
+}
+function updateWorld(dt){
+ let p=playerBody.translation(),best=2.8;near=null;
+ for(let it of interactables){if(it.type==='crystal'&&it.data.got)continue;let pos=it.obj.getWorldPosition(new THREE.Vector3()),d=Math.hypot(pos.x-p.x,pos.z-p.z);if(d<best){best=d;near=it}}
+ $('prompt').style.display=near?'block':'none';if(near)$('prompt').textContent='E — '+near.label.toUpperCase();
+ if(interactQueued){interact();interactQueued=false}
+ crystals.forEach(c=>{if(!c.got){c.group.rotation.y+=dt*.8;c.group.position.y=c.baseY+Math.sin(clock.elapsedTime*2+c.phase)*.18}});
+ npcs.forEach(n=>{n.group.position.y=n.base.y+Math.sin(clock.elapsedTime*1.7+n.phase)*.12;n.group.rotation.y=Math.sin(clock.elapsedTime*.6+n.phase)*.25});
+ particles=particles.filter(q=>{q.life-=dt;q.mesh.position.addScaledVector(q.vel,dt);q.vel.y-=4*dt;q.mesh.material.opacity=Math.max(0,q.life);if(q.life<=0){scene.remove(q.mesh);return false}return true});
+ if(energy===5&&!completed){let nearBeacon=Math.hypot(p.x,p.z+11)<4.2;if(nearBeacon){completed=true;show('complete');saveGame()}}
+}
+function animate(){if(!running)return;requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.033);if(started&&!$('pause').classList.contains('hidden')===false){}if(started&&$('pause').classList.contains('hidden')&&$('settings').classList.contains('hidden')&&$('complete').classList.contains('hidden')){world.step();updatePlayer(dt);updateWorld(dt);if(clock.elapsedTime-lastSave>15){saveGame();lastSave=clock.elapsedTime}}renderer.render(scene,camera)}
+function startGame(){started=true;show(null);if(audioCtx?.state==='suspended')audioCtx.resume();if(!audioCtx)sound(440,.15);toast('Bienvenido a Isla Aurora');}
+function pauseGame(){if(!started)return;show('pause');document.exitPointerLock?.();saveGame()}
+function saveGame(){if(!playerBody)return;let p=playerBody.translation();localStorage.setItem('islaAuroraSave',JSON.stringify({x:p.x,y:p.y,z:p.z,energy,got:crystals.map(c=>c.got),yaw,third,quality,volume}))}
+function loadSave(announce=true){try{let s=JSON.parse(localStorage.getItem('islaAuroraSave'));if(!s)return;playerBody.setTranslation({x:s.x??0,y:s.y??2,z:s.z??1},true);energy=s.energy||0;yaw=s.yaw||0;third=s.third??true;energy=Math.min(5,energy);crystals.forEach((c,i)=>{c.got=!!s.got?.[i];c.group.visible=!c.got});$('energy').textContent=energy;quality=s.quality||quality;volume=s.volume??volume;if(announce)toast('Partida cargada')}catch(e){}}
+$('start').onclick=()=>{energy=0;completed=false;crystals.forEach(c=>{c.got=false;c.group.visible=true});playerBody.setTranslation({x:0,y:2,z:1},true);playerBody.setLinvel({x:0,y:0,z:0},true);$('energy').textContent=0;$('objtext').textContent='Encuentra los 5 cristales de energía para activar el faro.';localStorage.removeItem('islaAuroraSave');startGame()};
+$('continue').onclick=()=>{loadSave();startGame()};
+$('resume').onclick=()=>{show(null);started=true};
+$('openSettings').onclick=()=>{window.settingsFrom='menu';show('settings')};
+$('pauseSettings').onclick=()=>{window.settingsFrom='pause';show('settings')};
+$('settingsBack').onclick=()=>show(window.settingsFrom==='pause'?'pause':'menu');
+$('saveExit').onclick=()=>{saveGame();started=false;show('menu')};
+$('again').onclick=()=>{completed=false;energy=0;crystals.forEach(c=>{c.got=false;c.group.visible=true});$('energy').textContent=0;$('objtext').textContent='Encuentra los 5 cristales de energía para activar el faro.';playerBody.setTranslation({x:0,y:2,z:1},true);show(null);saveGame()};
+$('completeMenu').onclick=()=>{started=false;show('menu')};
+$('quality').onchange=e=>{quality=e.target.value;renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?1.7:quality==='medium'?1.25:1));renderer.shadowMap.enabled=quality!=='low';saveGame()};
+$('volume').oninput=e=>{volume=+e.target.value;if(master)master.gain.value=volume};
+$('sens').oninput=e=>sensitivity=+e.target.value;
+init().catch(e=>{document.body.innerHTML='<div style="padding:30px;color:white">No se pudo iniciar el motor 3D. Abre el juego con conexión a Internet y un navegador compatible con WebGL2.<br><pre>'+e+'</pre></div>';console.error(e)});
+</script>
+</body></html>
